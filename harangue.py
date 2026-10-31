@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+import argparse
 import random
-import re
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 import requests
+from atproto import Client, client_utils
+
 
 # This script grabs a random harangue the dj page from the Guardian Website,
 # and then grabs a song from that page and prints it to the console.
@@ -41,7 +43,9 @@ def extract_songs(harangue_html):
     song_elements = soup.find_all("h2")
     song_elements = list(
         filter(
-            lambda x: x.text not in ["Comments", "Comments (…)", "Most viewed", "More on this story"], song_elements
+            lambda x: x.text
+            not in ["Comments", "Comments (…)", "Most viewed", "More on this story"],
+            song_elements,
         )
     )
     return song_elements
@@ -59,7 +63,7 @@ def parse_song_info(songinfo: Tag):
         iframe = songinfo.find_next("iframe")
         if iframe:
             url_frag = iframe["src"]
-            if 'youtube' in url_frag:
+            if "youtube" in url_frag:
                 url_frag = url_frag.removeprefix(
                     "https://www.youtube-nocookie.com/embed/"
                 )
@@ -89,21 +93,47 @@ def extract_dj_info(harangue_html):
         dj_name = dj_name.removesuffix("' favourite tracks")
         dj_name = dj_name.removesuffix("'s favourite tracks")
         dj_name = dj_name.removesuffix("’s favourite tracks")
+        dj_name = dj_name.removesuffix("’ favourite tracks")
 
     print(f"DJ Name: {dj_name}")
     return dj_name
 
 
-def post_to_bsky(dj_name, song_txt, song_url, desc, harangue_url):
-    post_content = f"{dj_name}\n{song_txt}\n{song_url}\n{desc}\n{GUARDIAN_URL}{harangue_url}"
+def post_to_bsky(dj_name, song_txt, song_url, desc, harangue_url, password):
+
+    post_content = (
+        f"{dj_name}\n{song_txt}\n{desc}\n{song_url}\n{GUARDIAN_URL}{harangue_url}"
+    )
     print(f"Posting to Bluesky:\n{post_content}")
+    song_prompt, _, song_title = song_txt.split("\n")
+    client = Client()
+    client.login("harangue-archive.bluesky.bot", password)
+    tb = client_utils.TextBuilder()
+    tb.text(f"{dj_name}: {song_prompt}\n\n")
+    if song_title:
+        tb.link(f"{song_title}\n", song_url)
+    else:
+        tb.link(f"{song_url}\n", song_url)
+    tb.text("\n")
+    tb.text(desc)
+    tb.text("\n")
+    tb.text("From ")
+    tb.link("Harangue the dj", f"{GUARDIAN_URL}{harangue_url}")
+
+    client.send_post(tb)
     exit(0)
-    # Here you would add the code to post to Bluesky using their API.
 
 
 def main():
     attempts = 0
     max_attempts = 8
+
+    parser = argparse.ArgumentParser(
+        description="Fetch a random song from a Guardian DJ harangue and post it to Bluesky."
+    )
+    parser.add_argument("password")
+    args = parser.parse_args()
+    password = args.password
 
     while attempts < max_attempts:
         harangue_html, harangue_url = get_random_harangue()
@@ -118,7 +148,9 @@ def main():
                     if song_txt and song_url:
                         if DEBUG:
                             print(f"Found song after {song_attempts} attempts")
-                        post_to_bsky(dj_name, song_txt, song_url, desc, harangue_url)
+                        post_to_bsky(
+                            dj_name, song_txt, song_url, desc, harangue_url, password
+                        )
                     songinfo = random.choice(all_songs)
                     song_attempts += 1
                 print(f"Failed to find a valid song after {song_attempts} attempts.")
