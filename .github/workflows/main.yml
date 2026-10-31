@@ -1,6 +1,8 @@
 name: Python package
 
-on: [push]
+on:
+  schedule:
+    - cron: '0 12 * * *' # Midday, every day
 
 jobs:
   post-to-bsky:
