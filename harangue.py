@@ -50,6 +50,14 @@ def extract_songs(harangue_html):
     )
     return song_elements
 
+def date_from_url(url: str):
+    # Example /music/2014/mar/21/karma-kid-favourite-tracks
+    url = url.removeprefix("/music/")
+    dates = url.split('/')[0:-1]
+    dates = dates[::-1]
+    dates[1] = dates[1].capitalize()
+    return '-'.join(dates)
+
 
 def parse_song_info(songinfo: Tag):
     song_txt = songinfo.get_text()
@@ -101,15 +109,19 @@ def extract_dj_info(harangue_html):
 
 def post_to_bsky(dj_name, song_txt, song_url, desc, harangue_url, password):
 
-    post_content = (
-        f"{dj_name}\n{song_txt}\n{desc}\n{song_url}\n{GUARDIAN_URL}{harangue_url}"
-    )
-    print(f"Posting to Bluesky:\n{post_content}")
-    song_prompt, _, song_title = song_txt.split("\n")
+    song_prompt, song_title = None, None
+    if len(song_txt.split("\n")) == 3:
+        song_prompt, _, song_title = song_txt.split("\n")
+    if len(song_txt.split("\n")) == 2:
+        song_prompt, song_title = song_txt.split("\n")
+    date = date_from_url(harangue_url)
     client = Client()
     client.login("harangue-archive.bluesky.bot", password)
     tb = client_utils.TextBuilder()
-    tb.text(f"{dj_name}: {song_prompt}\n\n")
+    if song_prompt:
+        tb.text(f"{dj_name}: {song_prompt}\n\n")
+    else:
+        tb.text(f"{dj_name}\n\n")
     if song_title:
         tb.link(f"{song_title}\n", song_url)
     else:
@@ -117,10 +129,29 @@ def post_to_bsky(dj_name, song_txt, song_url, desc, harangue_url, password):
     tb.text("\n")
     tb.text(desc)
     tb.text("\n")
-    tb.text("From ")
-    tb.link("Harangue the dj", f"{GUARDIAN_URL}{harangue_url}")
+    tb.link(date, f"{GUARDIAN_URL}{harangue_url}")
+    post_content = (
+        f"{dj_name}\n{song_txt}\n{desc}\n{song_url}\n{GUARDIAN_URL}{harangue_url}"
+    )
+    print(f"Posting to Bluesky:\n{post_content}", date)
 
-    client.send_post(tb)
+    try:
+        client.send_post(tb)
+    except Exception as e:
+        print(f"Error posting to Bluesky: {e}. Retrying without description.")
+        tb = client_utils.TextBuilder()
+        if song_prompt:
+            tb.text(f"{dj_name}: {song_prompt}\n\n")
+        else:
+            tb.text(f"{dj_name}\n\n")
+        if song_title:
+            tb.link(f"{song_title}\n", song_url)
+        else:
+            tb.link(f"{song_url}\n", song_url)
+        tb.text("\n")
+        tb.link(date, f"{GUARDIAN_URL}{harangue_url}")
+        client.send_post(tb)
+
     exit(0)
 
 
