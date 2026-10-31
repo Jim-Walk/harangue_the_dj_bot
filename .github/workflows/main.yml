@@ -8,7 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install packages
-        run: python -m venv venv; source venv/bin/activate; pip install -r requirements
+        run: python -m venv venv; source venv/bin/activate; pip install -r requirements.txt
       - name: post to bsky
         run: python harangue.py
 
