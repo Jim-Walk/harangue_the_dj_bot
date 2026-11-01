@@ -1,8 +1,8 @@
-name: Python package
+name: Post to Bluesky
 
 on:
   schedule:
-    - cron: '0 12 * * *' # Midday, every day
+    - cron: '23 14 * * *'
 
 jobs:
   post-to-bsky:
