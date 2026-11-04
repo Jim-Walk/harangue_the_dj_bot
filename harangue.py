@@ -116,7 +116,7 @@ def post_to_bsky(dj_name, song_txt, song_url, desc, harangue_url, password):
         song_prompt, song_title = song_txt.split("\n")
     date = date_from_url(harangue_url)
     client = Client()
-    client.login("harangue-archive.bluesky.bot", password)
+    client.login("harangue-archive.bsky.social", password)
     tb = client_utils.TextBuilder()
     if song_prompt:
         tb.text(f"{dj_name}: {song_prompt}\n\n")
