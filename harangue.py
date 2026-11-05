@@ -4,7 +4,7 @@ import random
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 import requests
-from atproto import Client, client_utils
+from atproto import Client, client_utils, models
 
 
 # This script grabs a random harangue the dj page from the Guardian Website,
@@ -150,7 +150,8 @@ def post_to_bsky(dj_name, song_txt, song_url, desc, harangue_url, password):
             tb.link(f"{song_url}\n", song_url)
         tb.text("\n")
         tb.link(date, f"{GUARDIAN_URL}{harangue_url}")
-        client.send_post(tb)
+        post_ref = models.create_strong_ref(client.send_post(tb))
+        client.send_post(text=desc, reply_to=post_ref)
 
     exit(0)
 
