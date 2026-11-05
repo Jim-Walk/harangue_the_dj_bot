@@ -50,13 +50,14 @@ def extract_songs(harangue_html):
     )
     return song_elements
 
+
 def date_from_url(url: str):
     # Example /music/2014/mar/21/karma-kid-favourite-tracks
     url = url.removeprefix("/music/")
-    dates = url.split('/')[0:-1]
+    dates = url.split("/")[0:-1]
     dates = dates[::-1]
     dates[1] = dates[1].capitalize()
-    return '-'.join(dates)
+    return "-".join(dates)
 
 
 def parse_song_info(songinfo: Tag):
@@ -151,7 +152,10 @@ def post_to_bsky(dj_name, song_txt, song_url, desc, harangue_url, password):
         tb.text("\n")
         tb.link(date, f"{GUARDIAN_URL}{harangue_url}")
         post_ref = models.create_strong_ref(client.send_post(tb))
-        client.send_post(text=desc, reply_to=post_ref)
+        client.send_post(
+            text=desc,
+            reply_to=models.AppBskyFeedPost.ReplyRef(parent=post_ref, root=post_ref),
+        )
 
     exit(0)
 
